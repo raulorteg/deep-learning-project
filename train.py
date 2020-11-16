@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
+import utils
+import os
+import subprocess
 
 import numpy as np
-import torch.optim as optim
 import gym
 from gym import wrappers
-import utils
+import imageio
+import matplotlib.pyplot as plt
+import pandas as pd
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+from utils import make_env, Storage, orthogonal_init
 
 step_vector = []
 reward_vector = []
@@ -26,11 +36,6 @@ entropy_coef = .01
 
 
 # training settings
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from utils import make_env, Storage, orthogonal_init
-
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -204,33 +209,28 @@ while step < total_steps:
   # Update stats
   step += num_envs * num_steps
   step_vector.append(step)
-  reward_vector.append(storage.get_reward())
-  print(f'Step: {step}\tMean reward: {storage.get_reward()}')
+  reward_vector.append(storage.get_reward().item())
+  print(f'Step: {step}\tMean reward: {storage.get_reward().item()}')
 
 print('Completed training!')
 torch.save(policy.state_dict, 'checkpoint.pt')
 
-
-import os
-import subprocess
-
 def get_git_revision_short_hash():
     return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
 
-hash_string = str(get_git_revision_short_hash())
+hash_string = get_git_revision_short_hash().decode('utf-8').replace('\n', '').replace('\r', '')
 
-import pandas as pd
+if not os.path.exists('./experiments'):
+    os.makedirs('./experiments')
+
 df = pd.DataFrame({"steps": step_vector, "rewards": reward_vector})
-df.to_csv(path_or_buf="/experiments/training_data_%s.csv" %hash_string , sep=',')
+df.to_csv(path_or_buf="./experiments/training_data_%s.csv" %hash_string, index=False)
 
-import matplotlib.pyplot as plt
 plt.plot(step_vector, reward_vector)
 plt.xlabel("step")
 plt.ylabel("Mean reward")
-plt.savefig("/experiments/training_curves_%s.png" %hash_string, format="png")
+plt.savefig("./experiments/training_curves_%s.png" %hash_string, format="png")
 
-
-import imageio
 
 # Make evaluation environment
 eval_env = make_env(num_envs, start_level=num_levels, num_levels=num_levels)
