@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# In[2]:
-
 
 import numpy as np
 import torch.optim as optim
@@ -10,8 +8,6 @@ import gym
 from gym import wrappers
 import utils
 
-
-# In[3]:
 
 step_vector = []
 reward_vector = []
@@ -212,20 +208,26 @@ while step < total_steps:
   print(f'Step: {step}\tMean reward: {storage.get_reward()}')
 
 print('Completed training!')
-torch.save(policy.state_dict, 'checkpoint.pt')  
+torch.save(policy.state_dict, 'checkpoint.pt')
 
 
-# In[4]:
+import os
+import subprocess
 
+def get_git_revision_short_hash():
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+
+hash_string = str(get_git_revision_short_hash())
+
+import pandas as pd
+df = pd.DataFrame({"steps": step_vector, "rewards": reward_vector})
+df.to_csv(path_or_buf="/experiments/training_data_%s.csv" %hash_string , sep=',')
 
 import matplotlib.pyplot as plt
 plt.plot(step_vector, reward_vector)
 plt.xlabel("step")
 plt.ylabel("Mean reward")
-plt.savefig("training_curves.png", format="png")
-
-
-# In[5]:
+plt.savefig("/experiments/training_curves_%s.png" %hash_string, format="png")
 
 
 import imageio
