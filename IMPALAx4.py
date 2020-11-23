@@ -34,7 +34,7 @@ from utils import make_env, Storage, orthogonal_init
 # Hyperparameters
 total_steps = 8e6
 num_envs = 32
-num_levels = 1000
+num_levels = 100
 num_steps = 256
 num_epochs = 3
 batch_size = 512
