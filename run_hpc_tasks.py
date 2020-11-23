@@ -32,7 +32,7 @@ for idx, definition in enumerate(definitions):
     os.chdir('./testing/%d' % idx)
     with open('%d.sh' % idx, 'w') as f:
       f.write('\n'.join(runner_script_lines))
-    os.system('bsub < %d.sh')
+    os.system('bsub < %d.sh' % idx)
     os.chdir('../..')
   except:
     print('Error while creating job script for job #%d.' % idx)

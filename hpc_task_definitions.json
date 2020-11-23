@@ -1,7 +1,7 @@
 [
   {
     "job_details": {
-      "runtime"             : "03:00",
+      "runtime"             : "01:00",
       "memory"              : "32GB"
     },
     "env_details": {
@@ -27,7 +27,7 @@
   },
   {
     "job_details": {
-      "runtime"             : "03:00",
+      "runtime"             : "01:00",
       "memory"              : "32GB"
     },
     "env_details": {
