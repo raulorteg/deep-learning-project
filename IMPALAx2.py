@@ -18,7 +18,7 @@ The cell below installs `procgen` and downloads a small `utils.py` script that c
 
 import utils
 import os
-import matlplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import torch.nn as nn
