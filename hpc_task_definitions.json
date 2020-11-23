@@ -1,0 +1,54 @@
+[
+  {
+    "job_details": {
+      "runtime"             : "03:00",
+      "memory"              : "32GB"
+    },
+    "env_details": {
+      "env_name"            : "starpilot",
+      "total_steps"         : 3e5,
+      "num_envs"            : 32,
+      "num_levels"          : 10,
+      "num_steps"           : 256,
+      "num_epochs"          : 3,
+      "start_level"         : 0,
+      "distribution_mode"   : "easy",
+      "use_backgrounds"     : 1
+    },
+    "nn_details": {
+      "batch_size"          : 512,
+      "eps"                 : 0.2,
+      "grad_eps"            : 0.5,
+      "value_coef"          : 0.5,
+      "entropy_coef"        : 0.5,
+      "num_neurons_encoder" : [256],
+      "num_neurons_policy"  : [256]
+    }
+  },
+  {
+    "job_details": {
+      "runtime"             : "03:00",
+      "memory"              : "32GB"
+    },
+    "env_details": {
+      "env_name"            : "starpilot",
+      "total_steps"         : 4e5,
+      "num_envs"            : 32,
+      "num_levels"          : 10,
+      "num_steps"           : 256,
+      "num_epochs"          : 3,
+      "start_level"         : 0,
+      "distribution_mode"   : "easy",
+      "use_backgrounds"     : 1
+    },
+    "nn_details": {
+      "batch_size"          : 512,
+      "eps"                 : 0.2,
+      "grad_eps"            : 0.5,
+      "value_coef"          : 0.5,
+      "entropy_coef"        : 0.5,
+      "num_neurons_encoder" : [256],
+      "num_neurons_policy"  : [256]
+    }
+  }
+]
