@@ -26,6 +26,7 @@ for idx, definition in enumerate(definitions):
       '#BSUB -R "rusage[mem=%s]"' % definition['job_details']['memory'],
       '#BSUB -o logs/log_%J.out',
       '#BSUB -e logs/log_%J.err',
+      'mkdir -p logs',
       'python3 ../../train.py %s' % python_args
     ]
     os.system('mkdir -p ./testing/%d' % idx)
