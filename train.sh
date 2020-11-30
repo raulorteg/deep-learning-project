@@ -7,6 +7,11 @@
 #BSUB -R "rusage[mem=16GB]"
 #BSUB -o logs/log_%J.out
 #BSUB -e logs/log_%J.err
+
+mkdir -p logs
 pip3 install procgen --user
 echo "Running script..."
-python3 train.py
+python3 Models/IMPALAx4.py
+
+
+
