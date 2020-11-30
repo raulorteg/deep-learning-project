@@ -197,7 +197,7 @@ print('Completed training!')
 torch.save(policy.state_dict, 'checkpoint.pt')
 
 # saving training vectors
-exp_version = "IMPALAx1"
+exp_version = "NATURE"
 
 if not os.path.exists('./experiments'):
     os.makedirs('./experiments')
