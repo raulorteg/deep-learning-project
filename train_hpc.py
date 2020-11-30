@@ -160,6 +160,7 @@ class Policy(nn.Module):
   def __init__(self, encoder, feature_dim, num_actions):
     super().__init__()
     self.encoder = encoder
+    
     self.policy = orthogonal_init(nn.Linear(feature_dim, num_actions), gain=.01)
     self.value = orthogonal_init(nn.Linear(feature_dim, 1), gain=1.)
 

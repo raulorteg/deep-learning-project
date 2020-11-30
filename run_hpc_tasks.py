@@ -38,4 +38,3 @@ for idx, definition in enumerate(definitions):
   except:
     print('Error while creating job script for job #%d.' % idx)
     traceback.print_exc()
-
