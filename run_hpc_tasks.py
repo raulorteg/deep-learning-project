@@ -13,8 +13,9 @@ except:
 
 for idx, definition in enumerate(definitions):
   try:
-    python_args = ' '.join(['--%s=\"%s\"' % (key, str(definition['env_details'][key])) for key in definition['env_details']])
-    python_args += ' '.join(['--%s=\"%s\"' % (key, str(definition['nn_details'][key])) for key in definition['nn_details']])
+    python_args = ' '.join(['--%s \"%s\"' % (key, str(definition['env_details'][key])) for key in definition['env_details']])
+    python_args += ' '
+    python_args += ' '.join(['--%s \"%s\"' % (key, str(definition['nn_details'][key])) for key in definition['nn_details']])
   
     runner_script_lines = [
       '#!/bin/sh',
@@ -27,7 +28,7 @@ for idx, definition in enumerate(definitions):
       '#BSUB -o logs/log_%J.out',
       '#BSUB -e logs/log_%J.err',
       'mkdir -p logs',
-      'python3 ../../train.py %s' % python_args
+      'python3 ../../Models/IMPALA_fixed.py %s' % python_args
     ]
     os.system('mkdir -p ./testing/%d' % idx)
     os.chdir('./testing/%d' % idx)

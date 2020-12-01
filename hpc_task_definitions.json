@@ -1,12 +1,12 @@
 [
   {
     "job_details": {
-      "runtime"             : "01:00",
-      "memory"              : "32GB"
+      "runtime"             : "00:20",
+      "memory"              : "16GB"
     },
     "env_details": {
       "env_name"            : "starpilot",
-      "total_steps"         : 3e5,
+      "total_steps"         : 1e5,
       "num_envs"            : 32,
       "num_levels"          : 10,
       "num_steps"           : 256,
@@ -20,19 +20,17 @@
       "eps"                 : 0.2,
       "grad_eps"            : 0.5,
       "value_coef"          : 0.5,
-      "entropy_coef"        : 0.5,
-      "num_neurons_encoder" : [256],
-      "num_neurons_policy"  : [256]
+      "entropy_coef"        : 0.5
     }
   },
   {
     "job_details": {
-      "runtime"             : "01:00",
-      "memory"              : "32GB"
+      "runtime"             : "00:20",
+      "memory"              : "16GB"
     },
     "env_details": {
-      "env_name"            : "starpilot",
-      "total_steps"         : 4e5,
+      "env_name"            : "jumper",
+      "total_steps"         : 1e5,
       "num_envs"            : 32,
       "num_levels"          : 10,
       "num_steps"           : 256,
@@ -46,9 +44,7 @@
       "eps"                 : 0.2,
       "grad_eps"            : 0.5,
       "value_coef"          : 0.5,
-      "entropy_coef"        : 0.5,
-      "num_neurons_encoder" : [256],
-      "num_neurons_policy"  : [256]
+      "entropy_coef"        : 0.5
     }
   }
 ]
