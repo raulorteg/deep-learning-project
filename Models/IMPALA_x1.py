@@ -274,7 +274,7 @@ torch.save(policy.state_dict, 'checkpoint.pt')
 
 """ Save, plot, training and test rewards """
 
-exp_version = "IMPALAx4"
+exp_version = "IMPALAx1"
 
 if not os.path.exists('./experiments'):
     os.makedirs('./experiments')

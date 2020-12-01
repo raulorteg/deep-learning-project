@@ -36,7 +36,7 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
-""" IMPALA encoder """
+""" NATURE CNN encoder """
 
 class Encoder(nn.Module):
   def __init__(self, in_channels, feature_dim):
@@ -212,7 +212,7 @@ torch.save(policy.state_dict, 'checkpoint.pt')
 
 """ Save, plot, training and test rewards """
 
-exp_version = "IMPALAx4"
+exp_version = "NATURE"
 
 if not os.path.exists('./experiments'):
     os.makedirs('./experiments')
