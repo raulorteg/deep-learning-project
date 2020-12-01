@@ -6,8 +6,6 @@
 #!wget https://raw.githubusercontent.com/nicklashansen/ppo-procgen-utils/main/utils.py
 
 import utils
-import argparse
-import json
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -19,129 +17,69 @@ import numpy as np
 from utils import make_env, Storage, orthogonal_init
 # from google.colab import files
 
-import sys
-print('Number of arguments: %d' % len(sys.argv))
-print('Argument List: %s' % str(sys.argv))
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--env_name', type=str)
-parser.add_argument('--total_steps', type=float)
-parser.add_argument('--num_envs', type=float)
-parser.add_argument('--num_levels', type=float)
-parser.add_argument('--num_steps', type=float)
-parser.add_argument('--num_epochs', type=float)
-parser.add_argument('--start_level', type=str)
-parser.add_argument('--distribution_mode', type=str)
-parser.add_argument('--use_backgrounds', type=float)
-parser.add_argument('--batch_size', type=float)
-parser.add_argument('--eps', type=float)
-parser.add_argument('--grad_eps', type=float)
-parser.add_argument('--value_coef', type=float)
-parser.add_argument('--entropy_coef', type=float)
-
-hyperparameters = parser.parse_args()
-
-print(hyperparameters)
 
 """ Hyperparameters """
 
-env_name = hyperparameters.env_name
-total_steps = int(hyperparameters.total_steps)
-num_envs = int(hyperparameters.num_envs)
-num_levels = int(hyperparameters.num_levels)
-num_steps = int(hyperparameters.num_steps)
-num_epochs = int(hyperparameters.num_epochs)
-start_level = int(hyperparameters.start_level)
-distribution_mode = hyperparameters.distribution_mode
-use_backgrounds = bool(hyperparameters.use_backgrounds)
-batch_size = int(hyperparameters.batch_size)
-eps = hyperparameters.eps
-grad_eps = hyperparameters.grad_eps
-value_coef = hyperparameters.value_coef
-entropy_coef = hyperparameters.entropy_coef
+# Hyperparameters
+total_steps = 8e6
+num_envs = 32
+num_levels = 10
+num_steps = 256
+num_epochs = 3
+batch_size = 512
+eps = .2
+grad_eps = .5
+value_coef = .5
+entropy_coef = .01
 
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
-""" IMPALA encoder """
+""" VGG encoder """
+VGG16 = [32, 32, 'M', 64, 64, 'M', 128, 128, 128, 'M', 256, 256, 256, 'M', 256, 256, 256, 'M']
 
 class Encoder(nn.Module):
-  def __init__(self, in_channels, feature_dim):
-    super().__init__()
-    self.feat_convs = []
-    self.resnet1 = []
-    self.resnet2 = []
-
-    self.convs = []
-    input_channels = in_channels 
-    for num_ch in [16, 32, 32]:
-        feats_convs = []
-        feats_convs.append(
-            nn.Conv2d(
-                in_channels=input_channels,
-                out_channels=num_ch,
-                kernel_size=3,
-                stride=1,
-                padding=1,
+    def __init__(self, in_channels, feature_dim):
+        super().__init__()
+        self.in_channels = in_channels
+        self.conv_layers = self.create_conv_layers(VGG16)
+        
+        self.fcs = nn.Sequential(
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(1024, feature_dim)
             )
-        )
-        feats_convs.append(nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
-        self.feat_convs.append(nn.Sequential(*feats_convs))
+        
+    def forward(self, x):
+        x = self.conv_layers(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.fcs(x)
+        return x
 
-        input_channels = num_ch
+    def create_conv_layers(self, architecture):
+        layers = []
+        in_channels = self.in_channels
+        
+        for x in architecture:
+            if type(x) == int:
+                out_channels = x
+                
+                layers += [nn.Conv2d(in_channels=in_channels,out_channels=out_channels,
+                                     kernel_size=(3,3), stride=(1,1), padding=(1,1)),
+                           nn.BatchNorm2d(x),
+                           nn.ReLU()]
+                in_channels = x
+            elif x == 'M':
+                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2))]
+                
+        return nn.Sequential(*layers)
+        
 
-        for i in range(2): # set to range(2) for IMPALAx4
-            resnet_block = []
-            resnet_block.append(nn.ReLU())
-            resnet_block.append(
-                nn.Conv2d(
-                    in_channels=input_channels,
-                    out_channels=num_ch,
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
-                )
-            )
-            resnet_block.append(nn.ReLU())
-            resnet_block.append(
-                nn.Conv2d(
-                    in_channels=input_channels,
-                    out_channels=num_ch,
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
-                )
-            )
-            if i == 0:
-                self.resnet1.append(nn.Sequential(*resnet_block))
-            else:
-                self.resnet2.append(nn.Sequential(*resnet_block))
-
-    self.feat_convs = nn.ModuleList(self.feat_convs)
-    self.resnet1 = nn.ModuleList(self.resnet1)
-    self.resnet2 = nn.ModuleList(self.resnet2)
-
-    self.flatten = Flatten()
-    self.lin = nn.Sequential(
-        nn.Linear(in_features=2048, out_features=feature_dim), nn.ReLU()
-    )
-    self.apply(orthogonal_init)
-
-  def forward(self, x):
-    for i, fconv in enumerate(self.feat_convs):
-        x = fconv(x)
-        res_input = x
-        x = self.resnet1[i](x)
-        x += res_input
-        res_input = x
-        x = self.resnet2[i](x)
-        x += res_input
-    #print("testing xshape: ", x.shape)
-    x = self.flatten(x)
-    #print("flatten xshape", x.shape)
-    x = self.lin(x)
-    return x
 
 """ Declaration of policy and value functions of actor-critic method """
 
@@ -175,21 +113,8 @@ class Policy(nn.Module):
 """ Define environment """
 
 # check the utils.py file for info on arguments
-env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=start_level,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
-  
-test_env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=num_levels,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
+env = make_env(num_envs, num_levels=num_levels)
+test_env = make_env(num_envs, num_levels=num_levels)
 print('Observation space:', env.observation_space)
 print('Action space:', env.action_space.n)
 
@@ -315,7 +240,7 @@ torch.save(policy.state_dict, 'checkpoint.pt')
 
 """ Save, plot, training and test rewards """
 
-exp_version = "IMPALAx4"
+exp_version = "VGG"
 
 if not os.path.exists('./experiments'):
     os.makedirs('./experiments')
@@ -341,13 +266,7 @@ plt.savefig("./experiments/Reward_curves_%s.png" %exp_version, format="png")
 """ Visualize performance on a test level """
 
 # Make evaluation environment
-eval_env = env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=num_levels,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
+eval_env = make_env(num_envs, start_level=num_levels, num_levels=num_levels)
 obs = eval_env.reset()
 
 frames = []

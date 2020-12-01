@@ -6,8 +6,6 @@
 #!wget https://raw.githubusercontent.com/nicklashansen/ppo-procgen-utils/main/utils.py
 
 import utils
-import argparse
-import json
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -19,46 +17,20 @@ import numpy as np
 from utils import make_env, Storage, orthogonal_init
 # from google.colab import files
 
-import sys
-print('Number of arguments: %d' % len(sys.argv))
-print('Argument List: %s' % str(sys.argv))
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--env_name', type=str)
-parser.add_argument('--total_steps', type=float)
-parser.add_argument('--num_envs', type=float)
-parser.add_argument('--num_levels', type=float)
-parser.add_argument('--num_steps', type=float)
-parser.add_argument('--num_epochs', type=float)
-parser.add_argument('--start_level', type=str)
-parser.add_argument('--distribution_mode', type=str)
-parser.add_argument('--use_backgrounds', type=float)
-parser.add_argument('--batch_size', type=float)
-parser.add_argument('--eps', type=float)
-parser.add_argument('--grad_eps', type=float)
-parser.add_argument('--value_coef', type=float)
-parser.add_argument('--entropy_coef', type=float)
-
-hyperparameters = parser.parse_args()
-
-print(hyperparameters)
 
 """ Hyperparameters """
 
-env_name = hyperparameters.env_name
-total_steps = int(hyperparameters.total_steps)
-num_envs = int(hyperparameters.num_envs)
-num_levels = int(hyperparameters.num_levels)
-num_steps = int(hyperparameters.num_steps)
-num_epochs = int(hyperparameters.num_epochs)
-start_level = int(hyperparameters.start_level)
-distribution_mode = hyperparameters.distribution_mode
-use_backgrounds = bool(hyperparameters.use_backgrounds)
-batch_size = int(hyperparameters.batch_size)
-eps = hyperparameters.eps
-grad_eps = hyperparameters.grad_eps
-value_coef = hyperparameters.value_coef
-entropy_coef = hyperparameters.entropy_coef
+# Hyperparameters
+total_steps = 8e6
+num_envs = 32
+num_levels = 10
+num_steps = 256
+num_epochs = 3
+batch_size = 512
+eps = .2
+grad_eps = .5
+value_coef = .5
+entropy_coef = .01
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -91,7 +63,7 @@ class Encoder(nn.Module):
 
         input_channels = num_ch
 
-        for i in range(2): # set to range(2) for IMPALAx4
+        for i in range(1): # set to range(2) for IMPALAx4
             resnet_block = []
             resnet_block.append(nn.ReLU())
             resnet_block.append(
@@ -115,12 +87,12 @@ class Encoder(nn.Module):
             )
             if i == 0:
                 self.resnet1.append(nn.Sequential(*resnet_block))
-            else:
-                self.resnet2.append(nn.Sequential(*resnet_block))
+            #else:
+            #    self.resnet2.append(nn.Sequential(*resnet_block))
 
     self.feat_convs = nn.ModuleList(self.feat_convs)
     self.resnet1 = nn.ModuleList(self.resnet1)
-    self.resnet2 = nn.ModuleList(self.resnet2)
+    #self.resnet2 = nn.ModuleList(self.resnet2)
 
     self.flatten = Flatten()
     self.lin = nn.Sequential(
@@ -135,8 +107,8 @@ class Encoder(nn.Module):
         x = self.resnet1[i](x)
         x += res_input
         res_input = x
-        x = self.resnet2[i](x)
-        x += res_input
+        #x = self.resnet2[i](x)
+        #x += res_input
     #print("testing xshape: ", x.shape)
     x = self.flatten(x)
     #print("flatten xshape", x.shape)
@@ -175,21 +147,8 @@ class Policy(nn.Module):
 """ Define environment """
 
 # check the utils.py file for info on arguments
-env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=start_level,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
-  
-test_env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=num_levels,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
+env = make_env(num_envs, num_levels=num_levels)
+test_env = make_env(num_envs, num_levels=num_levels)
 print('Observation space:', env.observation_space)
 print('Action space:', env.action_space.n)
 
@@ -315,7 +274,7 @@ torch.save(policy.state_dict, 'checkpoint.pt')
 
 """ Save, plot, training and test rewards """
 
-exp_version = "IMPALAx4"
+exp_version = "IMPALAx2"
 
 if not os.path.exists('./experiments'):
     os.makedirs('./experiments')
@@ -341,13 +300,7 @@ plt.savefig("./experiments/Reward_curves_%s.png" %exp_version, format="png")
 """ Visualize performance on a test level """
 
 # Make evaluation environment
-eval_env = env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=num_levels,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
+eval_env = make_env(num_envs, start_level=num_levels, num_levels=num_levels)
 obs = eval_env.reset()
 
 frames = []
