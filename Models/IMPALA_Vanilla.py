@@ -182,16 +182,6 @@ env = make_env(
   num_levels=num_levels,
   use_backgrounds=use_backgrounds,
   distribution_mode=distribution_mode)
-  
-test_env = make_env(
-  num_envs,
-  env_name=env_name,
-  start_level=num_levels,
-  num_levels=num_levels,
-  use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
-print('Observation space:', env.observation_space)
-print('Action space:', env.action_space.n)
 
 """ Define network """
 
@@ -214,6 +204,25 @@ storage = Storage(
     num_steps,
     num_envs
 )
+
+# Create test env
+eval_env = make_env(
+  num_envs,
+  env_name=env_name,
+  start_level=num_levels,
+  num_levels=num_levels,
+  use_backgrounds=use_backgrounds,
+  distribution_mode=distribution_mode)
+
+eval_obs = eval_env.reset()
+
+eval_storage = Storage(
+    env.observation_space.shape,
+    num_steps,
+    num_envs
+)
+
+eval_reward_storage = 0
 
 """ Run training """
 
@@ -250,12 +259,27 @@ while step < total_steps:
     # Update current observation
     obs = next_obs
 
+
+    # TESTING
+    eval_action, eval_log_prob, eval_value = policy.act(eval_obs)
+
+    next_eval_obs, eval_reward, eval_done, eval_info = eval_env.step(action)
+
+    eval_storage.store(eval_obs, eval_action, eval_reward, eval_done, eval_info, eval_log_prob, eval_value)
+
+    eval_obs = next_eval_obs
+
   # Add the last observation to collected data
   _, _, value = policy.act(obs)
   storage.store_last(obs, value)
 
   # Compute return and advantage
   storage.compute_return_advantage()
+
+  # TESTING
+  _, _, eval_value = policy.act(eval_obs)
+  eval_storage.store_last(eval_obs, eval_value)
+  eval_storage.compute_return_advantage()
 
   ### Optimize policy ###
   policy.train()
@@ -300,14 +324,10 @@ while step < total_steps:
   step += num_envs * num_steps
   print(f'Step: {step}\tMean train reward: {storage.get_reward()}')
   reward_storage = np.append(reward_storage, storage.get_reward())
-  std_storage = np.append(std_storage, np.std(reward_storage))
   step_storage = np.append(step_storage, step)
-  
-  # Test stats
-  total_test_reward = torch.stack(total_test_reward).sum(0).mean(0).numpy()
-  print(f'Step: {step}\tMean test reward: {total_test_reward}\n')
-  test_reward_storage = np.append(test_reward_storage, total_test_reward)
-  test_std_storage = np.append(test_std_storage, np.std(test_reward_storage))
+
+  # Testing stats
+  eval_reward_storage = np.append(eval_reward_storage, eval_storage.get_reward())
   
 print('Completed training!')
 torch.save(policy.state_dict, 'checkpoint.pt')
@@ -324,14 +344,11 @@ if not os.path.exists('./experiments'):
 df = pd.DataFrame({"steps": step_storage, "rewards": reward_storage})
 df.to_csv(path_or_buf="./experiments/training_data_%s.csv" %exp_version, index=False)
 plt.plot(step_storage, reward_storage, color="#5E35B1", label = "Train")
-plt.fill_between(step_storage, reward_storage+std_storage, reward_storage-std_storage,
-                 color="#5E35B1", edgecolor="#FFFFFF", alpha=0.2)
+
 # Test data
-df_test = pd.DataFrame({"steps": step_storage, "rewards": test_reward_storage})
+df_test = pd.DataFrame({"steps": step_storage, "rewards": eval_reward_storage})
 df_test.to_csv(path_or_buf="./experiments/test_data_%s.csv" %exp_version, index=False)
-plt.plot(step_storage, test_reward_storage, color="#FF6F00", label = "Test")
-plt.fill_between(step_storage, test_reward_storage+test_std_storage, test_reward_storage-test_std_storage,
-                 color = "#FF6F00", edgecolor="#FFFFFF", alpha=0.2)
+plt.plot(step_storage, eval_reward_storage, color="#FF6F00", label = "Test")
 
 plt.legend(loc=4)
 plt.xlabel("Step")
