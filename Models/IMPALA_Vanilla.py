@@ -205,6 +205,12 @@ storage = Storage(
     num_envs
 )
 
+eval_storage = Storage(
+    env.observation_space.shape,
+    num_steps,
+    num_envs
+)
+
 # Create test env
 eval_env = make_env(
   num_envs,
@@ -226,14 +232,8 @@ eval_reward_storage = 0
 
 """ Run training """
 
-obs = env.reset()
-test_obs = test_env.reset()
-
 reward_storage = 0
-std_storage = 0
-
-test_reward_storage = 0
-test_std_storage = 0
+obs = env.reset()
 
 step_storage = 0
 step = 0
@@ -246,15 +246,12 @@ while step < total_steps:
   for _ in range(num_steps):
     # Use policy in train and test env
     action, log_prob, value = policy.act(obs)
-    test_action, test_log_prob, test_value = policy.act(test_obs)
     
     # Take step in environment
     next_obs, reward, done, info = env.step(action)
-    test_obs, test_reward, test_done, test_info = test_env.step(test_action)
 
     # Store data
     storage.store(obs, action, reward, done, info, log_prob, value)
-    total_test_reward.append(torch.Tensor(test_reward))
     
     # Update current observation
     obs = next_obs

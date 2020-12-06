@@ -28,7 +28,7 @@ for idx, definition in enumerate(definitions):
       '#BSUB -o logs/log_%J.out',
       '#BSUB -e logs/log_%J.err',
       'mkdir -p logs',
-      'python3 ../../Models/IMPALA_fixed.py %s' % python_args
+      'python3 ../../Models/IMPALA_Vanilla.py %s' % python_args
     ]
     os.system('mkdir -p ./testing/%d' % idx)
     os.chdir('./testing/%d' % idx)

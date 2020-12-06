@@ -1,36 +1,12 @@
 [
   {
     "job_details": {
-      "runtime"             : "00:20",
-      "memory"              : "16GB"
+      "runtime"             : "10:00",
+      "memory"              : "64GB"
     },
     "env_details": {
       "env_name"            : "starpilot",
-      "total_steps"         : 1e5,
-      "num_envs"            : 32,
-      "num_levels"          : 10,
-      "num_steps"           : 256,
-      "num_epochs"          : 3,
-      "start_level"         : 0,
-      "distribution_mode"   : "easy",
-      "use_backgrounds"     : 1
-    },
-    "nn_details": {
-      "batch_size"          : 512,
-      "eps"                 : 0.2,
-      "grad_eps"            : 0.5,
-      "value_coef"          : 0.5,
-      "entropy_coef"        : 0.5
-    }
-  },
-  {
-    "job_details": {
-      "runtime"             : "00:20",
-      "memory"              : "16GB"
-    },
-    "env_details": {
-      "env_name"            : "jumper",
-      "total_steps"         : 1e5,
+      "total_steps"         : 3e6,
       "num_envs"            : 32,
       "num_levels"          : 10,
       "num_steps"           : 256,
