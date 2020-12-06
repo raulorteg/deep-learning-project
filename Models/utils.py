@@ -27,7 +27,8 @@ def make_env(
 	use_backgrounds=False,
 	normalize_obs=False,
 	normalize_reward=True,
-	seed=0
+	seed=0,
+  	distribution_mode='easy'
 	):
 	"""Make environment for procgen experiments"""
 	set_global_seeds(seed)

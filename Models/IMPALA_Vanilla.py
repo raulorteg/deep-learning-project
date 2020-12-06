@@ -6,6 +6,8 @@
 #!wget https://raw.githubusercontent.com/nicklashansen/ppo-procgen-utils/main/utils.py
 
 import utils
+import argparse
+import json
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -17,20 +19,46 @@ import numpy as np
 from utils import make_env, Storage, orthogonal_init
 # from google.colab import files
 
+import sys
+print('Number of arguments: %d' % len(sys.argv))
+print('Argument List: %s' % str(sys.argv))
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--env_name', type=str)
+parser.add_argument('--total_steps', type=float)
+parser.add_argument('--num_envs', type=float)
+parser.add_argument('--num_levels', type=float)
+parser.add_argument('--num_steps', type=float)
+parser.add_argument('--num_epochs', type=float)
+parser.add_argument('--start_level', type=str)
+parser.add_argument('--distribution_mode', type=str)
+parser.add_argument('--use_backgrounds', type=float)
+parser.add_argument('--batch_size', type=float)
+parser.add_argument('--eps', type=float)
+parser.add_argument('--grad_eps', type=float)
+parser.add_argument('--value_coef', type=float)
+parser.add_argument('--entropy_coef', type=float)
+
+hyperparameters = parser.parse_args()
+
+print(hyperparameters)
 
 """ Hyperparameters """
 
-# Hyperparameters
-total_steps = 8e6
-num_envs = 32
-num_levels = 10
-num_steps = 256
-num_epochs = 3
-batch_size = 512
-eps = .2
-grad_eps = .5
-value_coef = .5
-entropy_coef = .01
+env_name = hyperparameters.env_name
+total_steps = int(hyperparameters.total_steps)
+num_envs = int(hyperparameters.num_envs)
+num_levels = int(hyperparameters.num_levels)
+num_steps = int(hyperparameters.num_steps)
+num_epochs = int(hyperparameters.num_epochs)
+start_level = int(hyperparameters.start_level)
+distribution_mode = hyperparameters.distribution_mode
+use_backgrounds = bool(hyperparameters.use_backgrounds)
+batch_size = int(hyperparameters.batch_size)
+eps = hyperparameters.eps
+grad_eps = hyperparameters.grad_eps
+value_coef = hyperparameters.value_coef
+entropy_coef = hyperparameters.entropy_coef
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -147,8 +175,20 @@ class Policy(nn.Module):
 """ Define environment """
 
 # check the utils.py file for info on arguments
-env = make_env(num_envs, num_levels=num_levels)
-test_env = make_env(num_envs, seed = 80, start_level=num_levels,num_levels=num_levels)
+env = make_env(
+  num_envs,
+  env_name=env_name,
+  start_level=num_levels,
+  num_levels=num_levels,
+  use_backgrounds=use_backgrounds,
+  distribution_mode=distribution_mode)
+test_env = make_env(
+  num_envs,
+  env_name=env_name,
+  start_level=num_levels,
+  num_levels=num_levels,
+  use_backgrounds=use_backgrounds,
+  distribution_mode=distribution_mode)
 print('Observation space:', env.observation_space)
 print('Action space:', env.action_space.n)
 
@@ -348,7 +388,13 @@ imageio.mimsave('./experiments/vid_train_%s.mp4' %exp_version, frames, fps=45)
 """ Visualize performance on a test level """
 
 # Make evaluation environment
-eval_env = make_env(num_envs, start_level=num_levels, num_levels=num_levels)
+eval_env = make_env(
+  num_envs,
+  env_name=env_name,
+  start_level=num_levels,
+  num_levels=num_levels,
+  use_backgrounds=use_backgrounds,
+  distribution_mode=distribution_mode)
 obs = eval_env.reset()
 
 frames = []
