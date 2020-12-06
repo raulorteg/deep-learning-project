@@ -27,8 +27,7 @@ def make_env(
 	use_backgrounds=False,
 	normalize_obs=False,
 	normalize_reward=True,
-	seed=0,
-  	distribution_mode='easy'
+	seed=0
 	):
 	"""Make environment for procgen experiments"""
 	set_global_seeds(seed)
@@ -38,7 +37,7 @@ def make_env(
 		env_name=env_name,
 		start_level=start_level,
 		num_levels=num_levels,
-		distribution_mode=distribution_mode,
+		distribution_mode='easy',
 		use_backgrounds=use_backgrounds,
 		restrict_themes=not use_backgrounds,
 		render_mode='rgb_array',
@@ -74,6 +73,7 @@ class Storage():
 		self.advantage = torch.zeros(self.num_steps, self.num_envs)
 		self.info = deque(maxlen=self.num_steps)
 		self.step = 0
+		self.test_info = deque(maxlen=self.num_steps)
 
 	def store(self, obs, action, reward, done, info, log_prob, value):
 		self.obs[self.step] = obs.clone()
@@ -84,6 +84,9 @@ class Storage():
 		self.log_prob[self.step] = log_prob.clone()
 		self.value[self.step] = value.clone()
 		self.step = (self.step + 1) % self.num_steps
+
+	def test_store(self, test_info):
+		self.test_info.append(test_info)
 
 	def store_last(self, obs, value):
 		self.obs[-1] = obs.clone()
@@ -123,6 +126,17 @@ class Storage():
 		
 		return reward.mean(1).sum(0)
 
+	def get_test_reward(self, normalized_reward=True):
+		if normalized_reward:
+			test_reward = []
+			for step in range(self.num_steps):
+				test_info = self.test_info[step]
+				test_reward.append([d['reward'] for d in test_info])
+			test_reward = torch.Tensor(test_reward)
+		else:
+			test_reward = self.test_reward
+		
+		return test_reward.mean(1).sum(0)
 
 def orthogonal_init(module, gain=nn.init.calculate_gain('relu')):
 	"""Orthogonal weight initialization: https://arxiv.org/abs/1312.6120"""
