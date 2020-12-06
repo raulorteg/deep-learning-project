@@ -6,6 +6,8 @@
 #!wget https://raw.githubusercontent.com/nicklashansen/ppo-procgen-utils/main/utils.py
 
 import utils
+import argparse
+import json
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -17,20 +19,46 @@ import numpy as np
 from utils import make_env, Storage, orthogonal_init
 # from google.colab import files
 
+import sys
+print('Number of arguments: %d' % len(sys.argv))
+print('Argument List: %s' % str(sys.argv))
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--env_name', type=str)
+parser.add_argument('--total_steps', type=float)
+parser.add_argument('--num_envs', type=float)
+parser.add_argument('--num_levels', type=float)
+parser.add_argument('--num_steps', type=float)
+parser.add_argument('--num_epochs', type=float)
+parser.add_argument('--start_level', type=str)
+parser.add_argument('--distribution_mode', type=str)
+parser.add_argument('--use_backgrounds', type=float)
+parser.add_argument('--batch_size', type=float)
+parser.add_argument('--eps', type=float)
+parser.add_argument('--grad_eps', type=float)
+parser.add_argument('--value_coef', type=float)
+parser.add_argument('--entropy_coef', type=float)
+
+hyperparameters = parser.parse_args()
+
+print(hyperparameters)
 
 """ Hyperparameters """
 
-# Hyperparameters
-total_steps = 8e6
-num_envs = 32
-num_levels = 10
-num_steps = 256
-num_epochs = 3
-batch_size = 512
-eps = .2
-grad_eps = .5
-value_coef = .5
-entropy_coef = .01
+env_name = hyperparameters.env_name
+total_steps = int(hyperparameters.total_steps)
+num_envs = int(hyperparameters.num_envs)
+num_levels = int(hyperparameters.num_levels)
+num_steps = int(hyperparameters.num_steps)
+num_epochs = int(hyperparameters.num_epochs)
+start_level = int(hyperparameters.start_level)
+distribution_mode = hyperparameters.distribution_mode
+use_backgrounds = bool(hyperparameters.use_backgrounds)
+batch_size = int(hyperparameters.batch_size)
+eps = hyperparameters.eps
+grad_eps = hyperparameters.grad_eps
+value_coef = hyperparameters.value_coef
+entropy_coef = hyperparameters.entropy_coef
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -112,16 +140,35 @@ storage = Storage(
     num_envs
 )
 
+eval_storage = Storage(
+    env.observation_space.shape,
+    num_steps,
+    num_envs
+)
+
+# Create test env
+eval_env = make_env(
+  num_envs,
+  env_name=env_name,
+  start_level=num_levels,
+  num_levels=num_levels,
+  use_backgrounds=use_backgrounds,
+  distribution_mode=distribution_mode)
+
+eval_obs = eval_env.reset()
+
+eval_storage = Storage(
+    env.observation_space.shape,
+    num_steps,
+    num_envs
+)
+
+eval_reward_storage = 0
+
 """ Run training """
 
-obs = env.reset()
-test_obs = test_env.reset()
-
 reward_storage = 0
-std_storage = 0
-
-test_reward_storage = 0
-test_std_storage = 0
+obs = env.reset()
 
 step_storage = 0
 step = 0
@@ -134,18 +181,25 @@ while step < total_steps:
   for _ in range(num_steps):
     # Use policy in train and test env
     action, log_prob, value = policy.act(obs)
-    test_action, test_log_prob, test_value = policy.act(test_obs)
     
     # Take step in environment
     next_obs, reward, done, info = env.step(action)
-    test_obs, test_reward, test_done, test_info = test_env.step(test_action)
 
     # Store data
     storage.store(obs, action, reward, done, info, log_prob, value)
-    total_test_reward.append(torch.Tensor(test_reward))
     
     # Update current observation
     obs = next_obs
+
+
+    # TESTING
+    eval_action, eval_log_prob, eval_value = policy.act(eval_obs)
+
+    next_eval_obs, eval_reward, eval_done, eval_info = eval_env.step(action)
+
+    eval_storage.store(eval_obs, eval_action, eval_reward, eval_done, eval_info, eval_log_prob, eval_value)
+
+    eval_obs = next_eval_obs
 
   # Add the last observation to collected data
   _, _, value = policy.act(obs)
@@ -153,6 +207,11 @@ while step < total_steps:
 
   # Compute return and advantage
   storage.compute_return_advantage()
+
+  # TESTING
+  _, _, eval_value = policy.act(eval_obs)
+  eval_storage.store_last(eval_obs, eval_value)
+  eval_storage.compute_return_advantage()
 
   ### Optimize policy ###
   policy.train()
@@ -192,19 +251,15 @@ while step < total_steps:
       optimizer.step()
       optimizer.zero_grad()
 
-  ### Update stats ###
+### Update stats ###
   # Training stats
   step += num_envs * num_steps
   print(f'Step: {step}\tMean train reward: {storage.get_reward()}')
   reward_storage = np.append(reward_storage, storage.get_reward())
-  std_storage = np.append(std_storage, np.std(reward_storage))
   step_storage = np.append(step_storage, step)
-  
-  # Test stats
-  total_test_reward = torch.stack(total_test_reward).sum(0).mean(0).numpy()
-  print(f'Step: {step}\tMean test reward: {total_test_reward}\n')
-  test_reward_storage = np.append(test_reward_storage, total_test_reward)
-  test_std_storage = np.append(test_std_storage, np.std(test_reward_storage))
+
+  # Testing stats
+  eval_reward_storage = np.append(eval_reward_storage, eval_storage.get_reward())
   
 print('Completed training!')
 torch.save(policy.state_dict, 'checkpoint.pt')
@@ -221,14 +276,11 @@ if not os.path.exists('./experiments'):
 df = pd.DataFrame({"steps": step_storage, "rewards": reward_storage})
 df.to_csv(path_or_buf="./experiments/training_data_%s.csv" %exp_version, index=False)
 plt.plot(step_storage, reward_storage, color="#5E35B1", label = "Train")
-plt.fill_between(step_storage, reward_storage+std_storage, reward_storage-std_storage,
-                 color="#5E35B1", edgecolor="#FFFFFF", alpha=0.2)
+
 # Test data
-df_test = pd.DataFrame({"steps": step_storage, "rewards": test_reward_storage})
+df_test = pd.DataFrame({"steps": step_storage, "rewards": eval_reward_storage})
 df_test.to_csv(path_or_buf="./experiments/test_data_%s.csv" %exp_version, index=False)
-plt.plot(step_storage, test_reward_storage, color="#FF6F00", label = "Test")
-plt.fill_between(step_storage, test_reward_storage+test_std_storage, test_reward_storage-test_std_storage,
-                 color = "#FF6F00", edgecolor="#FFFFFF", alpha=0.2)
+plt.plot(step_storage, eval_reward_storage, color="#FF6F00", label = "Test")
 
 plt.legend(loc=4)
 plt.xlabel("Step")
@@ -238,7 +290,13 @@ plt.savefig("./experiments/Reward_curves_%s.png" %exp_version, format="png")
 """ Visualize performance on a test level """
 
 # Make evaluation environment
-eval_env = make_env(num_envs, start_level=num_levels, num_levels=num_levels)
+eval_env = env = make_env(
+  num_envs,
+  env_name=env_name,
+  start_level=num_levels,
+  num_levels=num_levels,
+  use_backgrounds=use_backgrounds,
+  distribution_mode=distribution_mode)
 obs = eval_env.reset()
 
 frames = []
