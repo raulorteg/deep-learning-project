@@ -36,50 +36,91 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
-""" VGG encoder """
-VGG16 = [32, 32, 'M', 64, 64, 'M', 128, 128, 128, 'M', 256, 256, 256, 'M', 256, 256, 256, 'M']
+""" IMPALA encoder """
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, feature_dim):
-        super().__init__()
-        self.in_channels = in_channels
-        self.conv_layers = self.create_conv_layers(VGG16)
-        
-        self.fcs = nn.Sequential(
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Dropout(p=0.5),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Dropout(p=0.5),
-            nn.Linear(1024, feature_dim)
+  def __init__(self, in_channels, feature_dim):
+    super().__init__()
+    self.feat_convs = []
+    self.resnet1 = []
+    self.resnet2 = []
+
+    self.convs = []
+    input_channels = in_channels 
+    for num_ch in [16, 32, 32]:
+        feats_convs = []
+        feats_convs.append(
+            nn.Conv2d(
+                in_channels=input_channels,
+                out_channels=num_ch,
+                kernel_size=3,
+                stride=1,
+                padding=1,
             )
-        
-    def forward(self, x):
-        x = self.conv_layers(x)
-        x = x.reshape(x.shape[0], -1)
-        x = self.fcs(x)
-        return x
+        )
+        feats_convs.append(nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
+        self.feat_convs.append(nn.Sequential(*feats_convs))
 
-    def create_conv_layers(self, architecture):
-        layers = []
-        in_channels = self.in_channels
-        
-        for x in architecture:
-            if type(x) == int:
-                out_channels = x
-                
-                layers += [nn.Conv2d(in_channels=in_channels,out_channels=out_channels,
-                                     kernel_size=(3,3), stride=(1,1), padding=(1,1)),
-                           nn.BatchNorm2d(x),
-                           nn.ReLU()]
-                in_channels = x
-            elif x == 'M':
-                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2))]
-                
-        return nn.Sequential(*layers)
-        
+        input_channels = num_ch
 
+        for i in range(2): # set to range(2) for IMPALAx4
+            resnet_block = []
+            resnet_block.append(nn.ReLU())
+            resnet_block.append(
+                nn.Conv2d(
+                    in_channels=input_channels,
+                    out_channels=num_ch,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                )
+            )
+            resnet_block.append(nn.ReLU())
+            resnet_block.append(
+                nn.Conv2d(
+                    in_channels=input_channels,
+                    out_channels=num_ch,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                )
+            )
+            if i == 0:
+                self.resnet1.append(nn.Sequential(*resnet_block))
+            else:
+                self.resnet2.append(nn.Sequential(*resnet_block))
+
+    self.feat_convs = nn.ModuleList(self.feat_convs)
+    self.resnet1 = nn.ModuleList(self.resnet1)
+    self.resnet2 = nn.ModuleList(self.resnet2)
+    
+    self.fcs = nn.Sequential(
+        nn.Linear(2048, 2048),
+        nn.ReLU(),
+        nn.Dropout(p=0.5),
+        nn.Linear(2048, 2048),
+        nn.ReLU(),
+        nn.Dropout(p=0.5),
+        nn.Linear(2048, feature_dim)
+        )
+
+    self.flatten = Flatten()
+    self.apply(orthogonal_init)
+
+  def forward(self, x):
+    for i, fconv in enumerate(self.feat_convs):
+        x = fconv(x)
+        res_input = x
+        x = self.resnet1[i](x)
+        x += res_input
+        res_input = x
+        x = self.resnet2[i](x)
+        x += res_input
+    #print("testing xshape: ", x.shape)
+    x = self.flatten(x)
+    #print("flatten xshape", x.shape)
+    x = self.fcs(x)
+    return x
 
 """ Declaration of policy and value functions of actor-critic method """
 
@@ -256,7 +297,7 @@ torch.save(policy.state_dict, 'checkpoint.pt')
 
 """ Save, plot, training and test rewards """
 
-exp_version = "VGG_starpilot"
+exp_version = "IMP_Linear_starpilot"
 
 if not os.path.exists('./experiments'):
     os.makedirs('./experiments')
