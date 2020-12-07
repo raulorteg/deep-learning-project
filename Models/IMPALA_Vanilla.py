@@ -178,7 +178,6 @@ class Policy(nn.Module):
 env = make_env(
   num_envs,
   env_name=env_name,
-  start_level=num_levels,
   num_levels=num_levels,
   use_backgrounds=use_backgrounds,
   distribution_mode=distribution_mode)
@@ -188,7 +187,8 @@ test_env = make_env(
   start_level=num_levels,
   num_levels=num_levels,
   use_backgrounds=use_backgrounds,
-  distribution_mode=distribution_mode)
+  distribution_mode=distribution_mode,
+  seed=80)
 print('Observation space:', env.observation_space)
 print('Action space:', env.action_space.n)
 
@@ -395,6 +395,7 @@ eval_env = make_env(
   num_levels=num_levels,
   use_backgrounds=use_backgrounds,
   distribution_mode=distribution_mode)
+  
 obs = eval_env.reset()
 
 frames = []
