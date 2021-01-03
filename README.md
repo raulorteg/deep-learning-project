@@ -9,7 +9,4 @@ Usage
 =====
 The runable Google Colab (.ipynb) file for the project can be found in `Models/` under the name `final_model.ipnyb`
 
-Requirements
-=====
-
 <img src="files/starpilot.gif" height="250"/>
