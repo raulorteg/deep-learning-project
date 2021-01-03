@@ -16,4 +16,4 @@ To install requirements:
 pip install -r requirements.txt
 ```
 
-<img src="starpilot.gif"/>
+<img src="files/starpilot.gif" height="250"/>
