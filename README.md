@@ -7,8 +7,7 @@ The project focus on generalization in videogames using policy gradient methods 
 
 Usage
 =====
-
-The different models used can be found in  `Models/` directory in three .ipynb (Jupyter/ Google Colab) files corresponding to the three encoders models explained in the paper for the report.
+The runable Google Colab (.ipynb) file for the project can be found in `Models/` under the name `final_model.ipnyb`
 
 Requirements
 =====
