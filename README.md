@@ -11,9 +11,5 @@ The runable Google Colab (.ipynb) file for the project can be found in `Models/`
 
 Requirements
 =====
-To install requirements:
-```
-pip install -r requirements.txt
-```
 
 <img src="files/starpilot.gif" height="250"/>
